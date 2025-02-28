@@ -1,0 +1,49 @@
+@using MudBlazor
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h6" Class="ml-3">Time Tracker</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" Edge="Edge.End" />
+        <MudMenu Direction="Direction.Bottom" OffsetY="true" Dense="true">
+            <ActivatorContent>
+                <MudAvatar Color="Color.Primary" Style="margin-left: 16px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" />
+                </MudAvatar>
+            </ActivatorContent>
+            <ChildContent>
+                <MudText Typo="Typo.body2" Class="px-4 py-2"><b>John Doe</b></MudText>
+                <MudText Typo="Typo.caption" Class="px-4 py-0">john.doe@example.com</MudText>
+                <MudDivider Class="my-2" />
+                <MudMenuItem Icon="@Icons.Material.Filled.Person">Profile</MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.Settings">Settings</MudMenuItem>
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Logout">Logout</MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-4 pt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+} 

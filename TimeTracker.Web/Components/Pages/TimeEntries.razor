@@ -1,0 +1,246 @@
+@page "/time-entries"
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@using TimeTracker.Web.Extensions
+@using TimeTracker.Web.Components.Dialogs
+@inject TimeEntryRepository TimeEntryRepository
+@inject EmployeeRepository EmployeeRepository
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Time Entries - Time Tracker</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Time Entries</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="3">
+            <MudDateRangePicker Label="Date Range" @bind-DateRange="_dateRange" />
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="int?" Label="Employee" @bind-Value="_selectedEmployeeId">
+                <MudSelectItem Value="@((int?)null)">All Employees</MudSelectItem>
+                @foreach (var employee in _employees)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)employee.Id)">@($"{employee.FirstName} {employee.LastName}")</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudSelect T="string" Label="Status" @bind-Value="_selectedStatus">
+                <MudSelectItem Value="@((string)null)">All Statuses</MudSelectItem>
+                <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                <MudSelectItem Value="@("In Progress")">In Progress</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="3" Class="d-flex align-end">
+            <MudButton Variant="Variant.Filled" 
+                     Color="Color.Primary" 
+                     OnClick="FilterTimeEntries"
+                     FullWidth="true">
+                Apply Filters
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudTable Items="@_timeEntries" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading"
+              LoadingProgressColor="Color.Info">
+        <HeaderContent>
+            <MudTh>Employee</MudTh>
+            <MudTh>Date</MudTh>
+            <MudTh>Clock In</MudTh>
+            <MudTh>Clock Out</MudTh>
+            <MudTh>Duration</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Employee">@GetEmployeeName(context.EmployeeId)</MudTd>
+            <MudTd DataLabel="Date">@context.ClockInTime.ToString("MM/dd/yyyy")</MudTd>
+            <MudTd DataLabel="Clock In">@context.ClockInTime.ToString("hh:mm tt")</MudTd>
+            <MudTd DataLabel="Clock Out">
+                @(context.ClockOutTime.HasValue ? context.ClockOutTime.Value.ToString("hh:mm tt") : "-")
+            </MudTd>
+            <MudTd DataLabel="Duration">
+                @(context.ClockOutTime.HasValue 
+                    ? FormatTimeSpan(context.ClockOutTime.Value - context.ClockInTime) 
+                    : FormatTimeSpan(DateTime.Now - context.ClockInTime))
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.ClockOutTime.HasValue)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Text="Completed" />
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Text="In Progress" />
+                }
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                            Size="Size.Small"
+                            Color="Color.Primary" 
+                            OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                            Size="Size.Small"
+                            Color="Color.Error" 
+                            OnClick="@(() => OpenDeleteDialog(context))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+        </PagerContent>
+    </MudTable>
+
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6">Summary</MudText>
+        <MudDivider Class="my-2" />
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudText><strong>Total Entries:</strong> @_timeEntries.Count</MudText>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudText><strong>Total Hours:</strong> @FormatTimeSpan(CalculateTotalHours())</MudText>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudText><strong>Active Entries:</strong> @_timeEntries.Count(e => !e.ClockOutTime.HasValue)</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    private List<TimeEntry> _timeEntries = new();
+    private List<Employee> _employees = new();
+    private bool _loading = true;
+    private DateRange _dateRange = new(DateTime.Now.AddDays(-7), DateTime.Now);
+    private int? _selectedEmployeeId;
+    private string? _selectedStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+        await LoadTimeEntries();
+    }
+
+    private async Task LoadEmployees()
+    {
+        _employees = await EmployeeRepository.GetAllEmployeesAsync();
+    }
+
+    private async Task LoadTimeEntries()
+    {
+        _loading = true;
+        _timeEntries = await TimeEntryRepository.GetTimeEntriesInRangeAsync(
+            _dateRange.Start ?? DateTime.Now.AddDays(-7),
+            _dateRange.End ?? DateTime.Now);
+        _loading = false;
+    }
+
+    private async Task FilterTimeEntries()
+    {
+        _loading = true;
+        
+        var startDate = _dateRange.Start ?? DateTime.Now.AddDays(-7);
+        var endDate = _dateRange.End ?? DateTime.Now;
+        
+        _timeEntries = await TimeEntryRepository.GetTimeEntriesInRangeAsync(startDate, endDate);
+        
+        // Apply employee filter if selected
+        if (_selectedEmployeeId.HasValue)
+        {
+            _timeEntries = _timeEntries.Where(t => t.EmployeeId == _selectedEmployeeId.Value).ToList();
+        }
+        
+        // Apply status filter if selected
+        if (!string.IsNullOrEmpty(_selectedStatus))
+        {
+            if (_selectedStatus == "Completed")
+            {
+                _timeEntries = _timeEntries.Where(t => t.ClockOutTime.HasValue).ToList();
+            }
+            else if (_selectedStatus == "In Progress")
+            {
+                _timeEntries = _timeEntries.Where(t => !t.ClockOutTime.HasValue).ToList();
+            }
+        }
+        
+        _loading = false;
+    }
+
+    private string GetEmployeeName(int employeeId)
+    {
+        var employee = _employees.FirstOrDefault(e => e.Id == employeeId);
+        return employee != null ? $"{employee.FirstName} {employee.LastName}" : "Unknown";
+    }
+
+    private string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        return $"{Math.Floor(timeSpan.TotalHours):00}:{timeSpan.Minutes:00}";
+    }
+
+    private TimeSpan CalculateTotalHours()
+    {
+        TimeSpan total = TimeSpan.Zero;
+        
+        foreach (var entry in _timeEntries)
+        {
+            if (entry.ClockOutTime.HasValue)
+            {
+                total += entry.ClockOutTime.Value - entry.ClockInTime;
+            }
+            else
+            {
+                total += DateTime.Now - entry.ClockInTime;
+            }
+        }
+        
+        return total;
+    }
+
+    private async Task OpenEditDialog(TimeEntry timeEntry)
+    {
+        var parameters = new DialogParameters
+        {
+            { "TimeEntry", timeEntry },
+            { "Employees", _employees }
+        };
+
+        var dialog = await DialogService.ShowAsync<TimeEntryDialog>("Edit Time Entry", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadTimeEntries();
+            Snackbar.Add("Time entry updated successfully!", Severity.Success);
+        }
+    }
+
+    private async Task OpenDeleteDialog(TimeEntry timeEntry)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", "Are you sure you want to delete this time entry? This action cannot be undone." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await TimeEntryRepository.DeleteTimeEntryAsync(timeEntry.Id);
+            await LoadTimeEntries();
+            Snackbar.Add("Time entry deleted successfully!", Severity.Success);
+        }
+    }
+} 

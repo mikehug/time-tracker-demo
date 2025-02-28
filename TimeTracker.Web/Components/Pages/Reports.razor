@@ -1,0 +1,312 @@
+@page "/reports"
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@using TimeTracker.Web.Extensions
+@using TimeTracker.Web.Components.Dialogs
+@inject TimeEntryRepository TimeEntryRepository
+@inject EmployeeRepository EmployeeRepository
+@inject ISnackbar Snackbar
+
+<PageTitle>Reports - Time Tracker</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Time Tracking Reports</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect T="int?" Label="Employee" @bind-Value="_selectedEmployeeId">
+                <MudSelectItem Value="@((int?)null)">All Employees</MudSelectItem>
+                @foreach (var employee in _employees)
+                {
+                    <MudSelectItem Value="@employee.Id">@($"{employee.FirstName} {employee.LastName}")</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="ReportType" Label="Report Type" @bind-Value="_selectedReportType">
+                <MudSelectItem Value="ReportType.Daily">Daily Summary</MudSelectItem>
+                <MudSelectItem Value="ReportType.Weekly">Weekly Summary</MudSelectItem>
+                <MudSelectItem Value="ReportType.Monthly">Monthly Summary</MudSelectItem>
+                <MudSelectItem Value="ReportType.EmployeeSummary">Employee Summary</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudDateRangePicker Label="Date Range" @bind-DateRange="_dateRange" />
+        </MudItem>
+        <MudItem xs="12" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled" 
+                     Color="Color.Primary" 
+                     OnClick="GenerateReport">
+                Generate Report
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else if (_reportGenerated)
+{
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h5" Class="mb-4">@GetReportTitle()</MudText>
+        
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4 mud-theme-primary">
+                    <MudText Typo="Typo.h6" Class="mb-2">Total Hours</MudText>
+                    <MudText Typo="Typo.h4">@FormatTimeSpan(_totalHours)</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4" Style="background-color: #4caf50; color: white;">
+                    <MudText Typo="Typo.h6" Class="mb-2">Total Entries</MudText>
+                    <MudText Typo="Typo.h4">@_timeEntries.Count</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4" Style="background-color: #ff9800; color: white;">
+                    <MudText Typo="Typo.h6" Class="mb-2">Average Hours/Day</MudText>
+                    <MudText Typo="Typo.h4">@FormatTimeSpan(_averageHoursPerDay)</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @if (_selectedReportType == ReportType.Daily)
+        {
+            <MudDivider Class="my-6" />
+            <MudText Typo="Typo.h6" Class="mb-4">Daily Breakdown</MudText>
+            
+            <MudTable Items="@_dailySummary" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Total Hours</MudTh>
+                    <MudTh>Entries</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Date">@context.Date.ToString("MM/dd/yyyy")</MudTd>
+                    <MudTd DataLabel="Total Hours">@FormatTimeSpan(context.TotalHours)</MudTd>
+                    <MudTd DataLabel="Entries">@context.EntryCount</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else if (_selectedReportType == ReportType.EmployeeSummary)
+        {
+            <MudDivider Class="my-6" />
+            <MudText Typo="Typo.h6" Class="mb-4">Employee Breakdown</MudText>
+            
+            <MudTable Items="@_employeeSummary" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Employee</MudTh>
+                    <MudTh>Total Hours</MudTh>
+                    <MudTh>Entries</MudTh>
+                    <MudTh>Average Hours/Day</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Employee">@context.EmployeeName</MudTd>
+                    <MudTd DataLabel="Total Hours">@FormatTimeSpan(context.TotalHours)</MudTd>
+                    <MudTd DataLabel="Entries">@context.EntryCount</MudTd>
+                    <MudTd DataLabel="Average Hours/Day">@FormatTimeSpan(context.AverageHoursPerDay)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        
+        <MudDivider Class="my-6" />
+        <MudGrid>
+            <MudItem xs="12" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" 
+                         Color="Color.Primary" 
+                         StartIcon="@Icons.Material.Filled.Print"
+                         OnClick="PrintReport">
+                    Print Report
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                         Color="Color.Secondary" 
+                         StartIcon="@Icons.Material.Filled.Download"
+                         Class="ml-2"
+                         OnClick="ExportReport">
+                    Export to CSV
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    private List<TimeEntry> _timeEntries = new();
+    private List<Employee> _employees = new();
+    private List<DailySummary> _dailySummary = new();
+    private List<EmployeeSummary> _employeeSummary = new();
+    private bool _loading = false;
+    private bool _reportGenerated = false;
+    private DateRange _dateRange = new(DateTime.Now.AddDays(-30), DateTime.Now);
+    private int? _selectedEmployeeId;
+    private ReportType _selectedReportType = ReportType.Daily;
+    private TimeSpan _totalHours = TimeSpan.Zero;
+    private TimeSpan _averageHoursPerDay = TimeSpan.Zero;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        _employees = await EmployeeRepository.GetAllEmployeesAsync();
+    }
+
+    private async Task GenerateReport()
+    {
+        _loading = true;
+        _reportGenerated = false;
+        
+        var startDate = _dateRange.Start ?? DateTime.Now.AddDays(-30);
+        var endDate = _dateRange.End ?? DateTime.Now;
+        
+        // Load time entries based on filters
+        _timeEntries = await TimeEntryRepository.GetTimeEntriesInRangeAsync(startDate, endDate);
+        
+        if (_selectedEmployeeId.HasValue)
+        {
+            _timeEntries = _timeEntries.Where(t => t.EmployeeId == _selectedEmployeeId.Value).ToList();
+        }
+        
+        // Calculate total hours
+        _totalHours = CalculateTotalHours(_timeEntries);
+        
+        // Calculate average hours per day
+        int totalDays = Math.Max(1, (int)(endDate - startDate).TotalDays + 1);
+        _averageHoursPerDay = TimeSpan.FromTicks(_totalHours.Ticks / totalDays);
+        
+        // Generate specific report data
+        if (_selectedReportType == ReportType.Daily)
+        {
+            GenerateDailySummary();
+        }
+        else if (_selectedReportType == ReportType.EmployeeSummary)
+        {
+            GenerateEmployeeSummary();
+        }
+        
+        _loading = false;
+        _reportGenerated = true;
+    }
+
+    private void GenerateDailySummary()
+    {
+        _dailySummary = _timeEntries
+            .GroupBy(t => t.ClockInTime.Date)
+            .Select(g => new DailySummary
+            {
+                Date = g.Key,
+                EntryCount = g.Count(),
+                TotalHours = CalculateTotalHours(g.ToList())
+            })
+            .OrderBy(s => s.Date)
+            .ToList();
+    }
+
+    private void GenerateEmployeeSummary()
+    {
+        _employeeSummary = _timeEntries
+            .GroupBy(t => t.EmployeeId)
+            .Select(g => 
+            {
+                var entries = g.ToList();
+                var totalHours = CalculateTotalHours(entries);
+                
+                // Get unique days
+                var uniqueDays = entries.Select(e => e.ClockInTime.Date).Distinct().Count();
+                
+                return new EmployeeSummary
+                {
+                    EmployeeId = g.Key,
+                    EmployeeName = GetEmployeeName(g.Key),
+                    EntryCount = entries.Count,
+                    TotalHours = totalHours,
+                    AverageHoursPerDay = TimeSpan.FromTicks(totalHours.Ticks / Math.Max(1, uniqueDays))
+                };
+            })
+            .OrderByDescending(s => s.TotalHours)
+            .ToList();
+    }
+
+    private TimeSpan CalculateTotalHours(List<TimeEntry> entries)
+    {
+        TimeSpan total = TimeSpan.Zero;
+        
+        foreach (var entry in entries)
+        {
+            if (entry.ClockOutTime.HasValue)
+            {
+                total += entry.ClockOutTime.Value - entry.ClockInTime;
+            }
+            else
+            {
+                total += DateTime.Now - entry.ClockInTime;
+            }
+        }
+        
+        return total;
+    }
+
+    private string GetEmployeeName(int employeeId)
+    {
+        var employee = _employees.FirstOrDefault(e => e.Id == employeeId);
+        return employee != null ? $"{employee.FirstName} {employee.LastName}" : "Unknown";
+    }
+
+    private string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        return $"{Math.Floor(timeSpan.TotalHours):00}:{timeSpan.Minutes:00}";
+    }
+
+    private string GetReportTitle()
+    {
+        string employeeFilter = _selectedEmployeeId.HasValue 
+            ? $"for {GetEmployeeName(_selectedEmployeeId.Value)}" 
+            : "for All Employees";
+            
+        string dateRange = $"({_dateRange.Start?.ToString("MM/dd/yyyy") ?? ""} - {_dateRange.End?.ToString("MM/dd/yyyy") ?? ""})";
+        
+        return $"{_selectedReportType} Report {employeeFilter} {dateRange}";
+    }
+
+    private void PrintReport()
+    {
+        // In a real application, this would generate a printable report
+        Snackbar.Add("Print functionality not implemented in this demo", Severity.Info);
+    }
+
+    private void ExportReport()
+    {
+        // In a real application, this would export data to CSV
+        Snackbar.Add("Export functionality not implemented in this demo", Severity.Info);
+    }
+
+    public enum ReportType
+    {
+        Daily,
+        Weekly,
+        Monthly,
+        EmployeeSummary
+    }
+
+    public class DailySummary
+    {
+        public DateTime Date { get; set; }
+        public int EntryCount { get; set; }
+        public TimeSpan TotalHours { get; set; }
+    }
+
+    public class EmployeeSummary
+    {
+        public int EmployeeId { get; set; }
+        public string EmployeeName { get; set; } = string.Empty;
+        public int EntryCount { get; set; }
+        public TimeSpan TotalHours { get; set; }
+        public TimeSpan AverageHoursPerDay { get; set; }
+    }
+} 

@@ -1,0 +1,91 @@
+@page "/help"
+@using MudBlazor
+
+<PageTitle>Help - Time Tracker</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Help & Support</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h5" Class="mb-3">Getting Started</MudText>
+    <MudText>
+        Welcome to the Time Tracker application! This help page provides information on how to use the various features of the application.
+    </MudText>
+</MudPaper>
+
+<MudExpansionPanels>
+    <MudExpansionPanel Text="Dashboard" IsInitiallyExpanded="true">
+        <MudText Class="mb-2">The Dashboard provides an overview of your time tracking activities:</MudText>
+        <MudList T="string" Clickable="false">
+            <MudListItem T="string" Text="View your current clock-in status" />
+            <MudListItem T="string" Text="See a summary of your recent time entries" />
+            <MudListItem T="string" Text="Quick access to clock in or out" />
+        </MudList>
+    </MudExpansionPanel>
+    
+    <MudExpansionPanel Text="Time Entries">
+        <MudText Class="mb-2">Manage all your time tracking records:</MudText>
+        <MudList T="string" Clickable="false">
+            <MudListItem T="string" Text="View all your time entries" />
+            <MudListItem T="string" Text="Edit or delete existing entries" />
+            <MudListItem T="string" Text="Add new time entries manually" />
+        </MudList>
+    </MudExpansionPanel>
+    
+    <MudExpansionPanel Text="Schedules">
+        <MudText Class="mb-2">Create and manage work schedules:</MudText>
+        <MudList T="string" Clickable="false">
+            <MudListItem T="string" Text="Set up recurring work schedules" />
+            <MudListItem T="string" Text="View schedule conflicts" />
+            <MudListItem T="string" Text="Manage time off and holidays" />
+        </MudList>
+    </MudExpansionPanel>
+    
+    <MudExpansionPanel Text="Employees">
+        <MudText Class="mb-2">Manage employee information:</MudText>
+        <MudList T="string" Clickable="false">
+            <MudListItem T="string" Text="Add new employees to the system" />
+            <MudListItem T="string" Text="Edit employee details" />
+            <MudListItem T="string" Text="Deactivate employees when needed" />
+        </MudList>
+    </MudExpansionPanel>
+    
+    <MudExpansionPanel Text="Reports">
+        <MudText Class="mb-2">Generate insights from your time tracking data:</MudText>
+        <MudList T="string" Clickable="false">
+            <MudListItem T="string" Text="View hours worked by employee" />
+            <MudListItem T="string" Text="Generate payroll reports" />
+            <MudListItem T="string" Text="Export data for accounting" />
+        </MudList>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+<MudPaper Class="pa-4 mt-4">
+    <MudText Typo="Typo.h5" Class="mb-3">Need Additional Help?</MudText>
+    <MudText Class="mb-3">
+        If you need further assistance, please contact our support team:
+    </MudText>
+    
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-4">
+                <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+                <MudText Typo="Typo.subtitle1">Email Support</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">support@timetracker.example.com</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-4">
+                <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                <MudText Typo="Typo.subtitle1">Phone Support</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">+1 (555) 123-4567</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="0" Class="d-flex flex-column align-center pa-4">
+                <MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Large" Color="Color.Tertiary" Class="mb-2" />
+                <MudText Typo="Typo.subtitle1">Live Chat</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center">Available 9 AM - 5 PM EST</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudPaper> 

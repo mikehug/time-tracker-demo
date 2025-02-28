@@ -1,0 +1,117 @@
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@using MudBlazor.Utilities
+@inject EmployeeRepository EmployeeRepository
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@Employee" @bind-IsValid="@_isValid">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.FirstName" 
+                                Label="First Name" 
+                                Required="true" 
+                                RequiredError="First name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.LastName" 
+                                Label="Last Name" 
+                                Required="true" 
+                                RequiredError="Last name is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.Email" 
+                                Label="Email" 
+                                Required="true" 
+                                RequiredError="Email is required"
+                                Validation="@(new EmailAddressAttribute() {ErrorMessage = "Invalid email address"})" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.EmployeeNumber" 
+                                Label="Employee ID" 
+                                Required="true" 
+                                RequiredError="Employee ID is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.Department" 
+                                Label="Department" 
+                                Required="true" 
+                                RequiredError="Department is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="Employee.Position" 
+                                Label="Position" 
+                                Required="true" 
+                                RequiredError="Position is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Date="Employee.HireDate" 
+                                DateChanged="@((DateTime? date) => Employee.HireDate = date ?? DateTime.Today)"
+                                Label="Hire Date" 
+                                Required="true"
+                                RequiredError="Hire date is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSwitch T="bool" @bind-Checked="Employee.IsActive" 
+                            Label="Active" 
+                            Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Employee.Notes" 
+                                Label="Notes" 
+                                Lines="3" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                 Disabled="@(!_isValid)" 
+                 OnClick="Submit">
+            @(IsEdit ? "Update" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Employee Employee { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm _form = default!;
+    private bool _isValid;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        
+        if (_isValid)
+        {
+            try
+            {
+                if (IsEdit)
+                {
+                    await EmployeeRepository.UpdateEmployeeAsync(Employee);
+                }
+                else
+                {
+                    await EmployeeRepository.AddEmployeeAsync(Employee);
+                }
+                
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+} 

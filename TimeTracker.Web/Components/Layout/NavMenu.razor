@@ -1,0 +1,19 @@
+@using MudBlazor
+
+<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudNavLink Href="/time-entries" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Timer">Time Entries</MudNavLink>
+    <MudNavLink Href="/schedules" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">Schedules</MudNavLink>
+    <MudNavLink Href="/employees" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">Employees</MudNavLink>
+    <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
+    
+    <MudDivider Class="my-2" />
+    
+    <MudNavGroup Title="Settings" Icon="@Icons.Material.Filled.Settings" Expanded="false">
+        <MudNavLink Href="/settings/profile" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+        <MudNavLink Href="/settings/company" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Business">Company</MudNavLink>
+        <MudNavLink Href="/settings/system" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">System</MudNavLink>
+    </MudNavGroup>
+    
+    <MudNavLink Href="/help" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Help">Help</MudNavLink>
+</MudNavMenu> 

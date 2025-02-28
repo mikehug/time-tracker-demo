@@ -1,0 +1,121 @@
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@inject ScheduleRepository ScheduleRepository
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@Schedule" @bind-IsValid="@_isValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudSelect T="int" Label="Employee" 
+                             @bind-Value="Schedule.EmployeeId" 
+                             Required="true"
+                             RequiredError="Employee is required">
+                        @foreach (var employee in Employees)
+                        {
+                            <MudSelectItem Value="@employee.Id">@($"{employee.FirstName} {employee.LastName}")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudDatePicker Label="Schedule Date" 
+                                 Date="Schedule.ScheduleDate"
+                                 DateChanged="@((DateTime? date) => Schedule.ScheduleDate = date ?? DateTime.Today)"
+                                 Required="true"
+                                 RequiredError="Date is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTimePicker Label="Start Time" 
+                                 @bind-Time="_startTime" 
+                                 Required="true"
+                                 RequiredError="Start time is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTimePicker Label="End Time" 
+                                 @bind-Time="_endTime" 
+                                 Required="true"
+                                 RequiredError="End time is required" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Schedule.Notes" 
+                                Label="Notes" 
+                                Lines="3" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                 Disabled="@(!_isValid)" 
+                 OnClick="Submit">
+            @(IsEdit ? "Update" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Schedule Schedule { get; set; } = new();
+    [Parameter] public List<Employee> Employees { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private TimeSpan? _startTime;
+    private TimeSpan? _endTime;
+
+    protected override void OnInitialized()
+    {
+        // Initialize time pickers with current values
+        _startTime = Schedule.StartTime;
+        _endTime = Schedule.EndTime;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        
+        if (_isValid && _startTime.HasValue && _endTime.HasValue)
+        {
+            try
+            {
+                // Set the DayOfWeek property based on the ScheduleDate
+                Schedule.DayOfWeek = Schedule.ScheduleDate.DayOfWeek;
+                
+                // Set the start and end times directly
+                Schedule.StartTime = _startTime.Value;
+                Schedule.EndTime = _endTime.Value;
+                
+                // Validate that end time is after start time
+                if (Schedule.EndTime <= Schedule.StartTime)
+                {
+                    Snackbar.Add("End time must be after start time", Severity.Error);
+                    return;
+                }
+                
+                if (IsEdit)
+                {
+                    await ScheduleRepository.UpdateScheduleAsync(Schedule);
+                }
+                else
+                {
+                    await ScheduleRepository.AddScheduleAsync(Schedule);
+                }
+                
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+} 

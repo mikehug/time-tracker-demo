@@ -1,0 +1,140 @@
+:root {
+    --mud-palette-primary: #2c6b9e;
+    --mud-palette-secondary: #6c757d;
+    --mud-palette-tertiary: #3e7daf;
+    --mud-palette-success: #28a745;
+    --mud-palette-info: #17a2b8;
+    --mud-palette-warning: #ffc107;
+    --mud-palette-error: #dc3545;
+}
+
+html, body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100%;
+    margin: 0;
+}
+
+.page-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 1rem;
+}
+
+.clock-wrapper {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.current-time {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--mud-palette-primary);
+}
+
+.current-date {
+    font-size: 1.2rem;
+    color: var(--mud-palette-secondary);
+}
+
+.clock-in-out-card {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-day {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.schedule-day.today {
+    background-color: #e8f4ff;
+}
+
+.profile-header {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.page-title {
+    margin-bottom: 1rem;
+    color: var(--mud-palette-primary);
+    font-weight: 600;
+}
+
+/* Status indicators */
+.status-active {
+    color: var(--mud-palette-success);
+}
+
+.status-inactive {
+    color: var(--mud-palette-error);
+}
+
+/* Time entry status */
+.entry-approved {
+    color: var(--mud-palette-success);
+}
+
+.entry-pending {
+    color: var(--mud-palette-warning);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hide-on-small {
+        display: none;
+    }
+
+    .current-time {
+        font-size: 2rem;
+    }
+}
+
+/* Custom animations */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+/* Dashboard grid layout */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 1rem;
+} 

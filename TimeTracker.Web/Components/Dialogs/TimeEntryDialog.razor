@@ -1,0 +1,118 @@
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@inject TimeEntryRepository TimeEntryRepository
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@TimeEntry" @bind-IsValid="@_isValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudSelect T="int" Label="Employee" 
+                             @bind-Value="TimeEntry.EmployeeId" 
+                             Required="true"
+                             RequiredError="Employee is required">
+                        @foreach (var employee in Employees)
+                        {
+                            <MudSelectItem Value="@employee.Id">@($"{employee.FirstName} {employee.LastName}")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="Date" 
+                                 Date="_selectedDate"
+                                 DateChanged="@((DateTime? date) => _selectedDate = date ?? DateTime.Today)"
+                                 Required="true"
+                                 RequiredError="Date is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTimePicker Label="Clock In Time" 
+                                 @bind-Time="_clockInTime" 
+                                 Required="true"
+                                 RequiredError="Clock in time is required" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTimePicker Label="Clock Out Time" 
+                                 @bind-Time="_clockOutTime" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="TimeEntry.Notes" 
+                                Label="Notes" 
+                                Lines="3" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                 Disabled="@(!_isValid)" 
+                 OnClick="Submit">
+            Update
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public TimeEntry TimeEntry { get; set; } = new();
+    [Parameter] public List<Employee> Employees { get; set; } = new();
+    [Parameter] public bool IsEdit { get; set; }
+
+    private MudForm _form = default!;
+    private bool _isValid;
+    private DateTime? _selectedDate;
+    private TimeSpan? _clockInTime;
+    private TimeSpan? _clockOutTime;
+
+    protected override void OnInitialized()
+    {
+        // Initialize date and time pickers with current values
+        _selectedDate = TimeEntry.ClockInTime.Date;
+        _clockInTime = TimeEntry.ClockInTime.TimeOfDay;
+        _clockOutTime = TimeEntry.ClockOutTime?.TimeOfDay;
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        
+        if (_isValid && _selectedDate.HasValue && _clockInTime.HasValue)
+        {
+            try
+            {
+                // Combine date and time
+                TimeEntry.ClockInTime = _selectedDate.Value.Date.Add(_clockInTime.Value);
+                
+                if (_clockOutTime.HasValue)
+                {
+                    TimeEntry.ClockOutTime = _selectedDate.Value.Date.Add(_clockOutTime.Value);
+                    
+                    // Validate that clock out is after clock in
+                    if (TimeEntry.ClockOutTime <= TimeEntry.ClockInTime)
+                    {
+                        Snackbar.Add("Clock out time must be after clock in time", Severity.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    TimeEntry.ClockOutTime = null;
+                }
+                
+                await TimeEntryRepository.UpdateTimeEntryAsync(TimeEntry);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+} 

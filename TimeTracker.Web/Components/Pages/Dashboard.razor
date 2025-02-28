@@ -1,0 +1,250 @@
+@page "/"
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@using System.Globalization
+@inject EmployeeRepository EmployeeRepository
+@inject TimeEntryRepository TimeEntryRepository
+@inject ScheduleRepository ScheduleRepository
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard - Time Tracker</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="3" Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Current Time</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Default" OnClick="@RefreshTime" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <div class="d-flex flex-column align-center">
+                    <MudText Typo="Typo.h3" Class="mb-2">@DateTime.Now.ToString("hh:mm:ss tt")</MudText>
+                    <MudText Typo="Typo.subtitle1">@DateTime.Now.ToString("dddd, MMMM d, yyyy")</MudText>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="3" Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Clock In/Out</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_activeTimeEntry != null)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Timer" Class="mr-3" />
+                            <div>
+                                <MudText>You've been clocked in for</MudText>
+                                <MudText Typo="Typo.h6">@GetElapsedTime(_activeTimeEntry.ClockInTime)</MudText>
+                            </div>
+                        </div>
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" FullWidth="true" 
+                               OnClick="@ClockOut" StartIcon="@Icons.Material.Filled.ExitToApp">
+                        Clock Out
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" 
+                               OnClick="@ClockIn" StartIcon="@Icons.Material.Filled.Login">
+                        Clock In
+                    </MudButton>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<MudDivider Class="my-6" />
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="3" Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Today's Schedule</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_todaySchedules.Any())
+                {
+                    <MudTimeline TimelinePosition="TimelinePosition.Left">
+                        @foreach (var schedule in _todaySchedules)
+                        {
+                            <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                <MudText Typo="Typo.body1" Class="mb-n2 mt-2">
+                                    @($"{schedule.StartTime.Hours:D2}:{schedule.StartTime.Minutes:D2}") - 
+                                    @($"{schedule.EndTime.Hours:D2}:{schedule.EndTime.Minutes:D2}")
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@GetTimeStatus(schedule.StartTime, schedule.EndTime)</MudText>
+                            </MudTimelineItem>
+                        }
+                    </MudTimeline>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No scheduled shifts for today.</MudAlert>
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/schedule"))">
+                    View Full Schedule
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudCard Elevation="3" Class="mb-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Recent Time Entries</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_recentEntries.Any())
+                {
+                    <MudList T="TimeEntry" Clickable="true">
+                        @foreach (var entry in _recentEntries)
+                        {
+                            <MudListItem T="TimeEntry">
+                                <div class="d-flex justify-space-between align-center">
+                                    <div>
+                                        <MudText Typo="Typo.body1">@entry.ClockInTime.ToString("MM/dd/yyyy")</MudText>
+                                        <MudText Typo="Typo.body2">
+                                            @entry.ClockInTime.ToString("hh:mm tt") - 
+                                            @(entry.ClockOutTime.HasValue ? entry.ClockOutTime.Value.ToString("hh:mm tt") : "Active")
+                                        </MudText>
+                                    </div>
+                                    <div>
+                                        @if (entry.ClockOutTime.HasValue)
+                                        {
+                                            var duration = entry.ClockOutTime.Value - entry.ClockInTime;
+                                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Text="@($"{Math.Round(duration.TotalHours, 2)} hours")" />
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Text="Active" />
+                                        }
+                                    </div>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No recent time entries found.</MudAlert>
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/timesheet"))">
+                    View All Entries
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private List<Schedule> _todaySchedules = new();
+    private List<TimeEntry> _recentEntries = new();
+    private TimeEntry? _activeTimeEntry;
+    private DateTime _currentDateTime = DateTime.Now;
+    private DayOfWeek _today = DateTime.Now.DayOfWeek;
+    private int _demoEmployeeId = 1; // Using demo user ID 1 for this example
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        // Get today's schedule
+        _todaySchedules = await ScheduleRepository.GetSchedulesForEmployeeOnDateAsync(_demoEmployeeId, DateTime.Today);
+        
+        // Get recent time entries
+        var startDate = DateTime.Today.AddDays(-7);
+        _recentEntries = await TimeEntryRepository.GetTimeEntriesForEmployeeInDateRangeAsync(_demoEmployeeId, startDate, DateTime.Today);
+        
+        // Check if there's an active time entry
+        _activeTimeEntry = await TimeEntryRepository.GetActiveTimeEntryForEmployeeAsync(_demoEmployeeId);
+    }
+
+    private void RefreshTime()
+    {
+        _currentDateTime = DateTime.Now;
+        StateHasChanged();
+    }
+
+    private async Task ClockIn()
+    {
+        try
+        {
+            var newTimeEntry = new TimeEntry
+            {
+                EmployeeId = _demoEmployeeId,
+                ClockInTime = DateTime.Now,
+                EntryType = EntryType.Regular
+            };
+
+            await TimeEntryRepository.AddTimeEntryAsync(newTimeEntry);
+            await LoadData();
+            Snackbar.Add("Successfully clocked in!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error clocking in: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ClockOut()
+    {
+        if (_activeTimeEntry != null)
+        {
+            try
+            {
+                await TimeEntryRepository.ClockOutAsync(_activeTimeEntry.Id);
+                await LoadData();
+                Snackbar.Add("Successfully clocked out!", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error clocking out: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetElapsedTime(DateTime startTime)
+    {
+        var elapsed = DateTime.Now - startTime;
+        return $"{elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+    }
+
+    private string GetTimeStatus(TimeSpan startTime, TimeSpan endTime)
+    {
+        var now = DateTime.Now.TimeOfDay;
+        
+        if (now < startTime)
+            return "Upcoming";
+        else if (now >= startTime && now <= endTime)
+            return "Currently Working";
+        else
+            return "Completed";
+    }
+} 

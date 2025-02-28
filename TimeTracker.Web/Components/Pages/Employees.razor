@@ -1,0 +1,186 @@
+@page "/employees"
+@using MudBlazor
+@using TimeTracker.Data.Models
+@using TimeTracker.Data.Repositories
+@using TimeTracker.Web.Extensions
+@using TimeTracker.Web.Components.Dialogs
+@inject EmployeeRepository EmployeeRepository
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Employees - Time Tracker</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Employees</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField T="string" Label="Search Employees" 
+                        Placeholder="Name, Email, ID, Department..." 
+                        Adornment="Adornment.Start" 
+                        AdornmentIcon="@Icons.Material.Filled.Search"
+                        @bind-Value="_searchString"
+                        Immediate="true"
+                        DebounceInterval="300"
+                        OnDebounceIntervalElapsed="SearchEmployees" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled" 
+                    Color="Color.Primary" 
+                    StartIcon="@Icons.Material.Filled.Add"
+                    OnClick="OpenAddDialog">
+                Add Employee
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+}
+else
+{
+    <MudTable Items="@_employees" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_loading" 
+              LoadingProgressColor="Color.Info">
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Department</MudTh>
+            <MudTh>Position</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.EmployeeNumber</MudTd>
+            <MudTd DataLabel="Name">@($"{context.FirstName} {context.LastName}")</MudTd>
+            <MudTd DataLabel="Email">@context.Email</MudTd>
+            <MudTd DataLabel="Department">@context.Department</MudTd>
+            <MudTd DataLabel="Position">@context.Position</MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsActive)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Text="Active" />
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Text="Inactive" />
+                }
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                            Size="Size.Small"
+                            Color="Color.Primary" 
+                            OnClick="@(() => OpenEditDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                            Size="Size.Small"
+                            Color="Color.Error" 
+                            OnClick="@(() => OpenDeleteDialog(context))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                            Size="Size.Small"
+                            Color="Color.Info" 
+                            OnClick="@(() => ViewEmployeeDetails(context))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+        </PagerContent>
+    </MudTable>
+}
+
+@code {
+    private List<Employee> _employees = new();
+    private bool _loading = true;
+    private string? _searchString;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmployees();
+    }
+
+    private async Task LoadEmployees()
+    {
+        _loading = true;
+        _employees = await EmployeeRepository.GetAllEmployeesAsync();
+        _loading = false;
+    }
+
+    private async Task SearchEmployees()
+    {
+        _loading = true;
+        
+        if (string.IsNullOrWhiteSpace(_searchString))
+        {
+            await LoadEmployees();
+        }
+        else
+        {
+            _employees = await EmployeeRepository.SearchEmployeesAsync(_searchString);
+        }
+        
+        _loading = false;
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEdit", false },
+            { "Employee", new Employee { HireDate = DateTime.Today, IsActive = true } }
+        };
+
+        var dialog = await DialogService.ShowAsync<EmployeeDialog>("Add Employee", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadEmployees();
+            Snackbar.Add("Employee added successfully!", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(Employee employee)
+    {
+        var parameters = new DialogParameters
+        {
+            { "IsEdit", true },
+            { "Employee", employee }
+        };
+
+        var dialog = await DialogService.ShowAsync<EmployeeDialog>("Edit Employee", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await LoadEmployees();
+            Snackbar.Add("Employee updated successfully!", Severity.Success);
+        }
+    }
+
+    private async Task OpenDeleteDialog(Employee employee)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to deactivate {employee.FirstName} {employee.LastName}? This will mark the employee as inactive." },
+            { "ButtonText", "Deactivate" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm Deactivation", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await EmployeeRepository.DeleteEmployeeAsync(employee.Id);
+            await LoadEmployees();
+            Snackbar.Add("Employee deactivated successfully!", Severity.Success);
+        }
+    }
+
+    private void ViewEmployeeDetails(Employee employee)
+    {
+        // This would navigate to a detailed view or show a dialog with more information
+        Snackbar.Add("Employee details view not implemented yet.", Severity.Info);
+    }
+} 
