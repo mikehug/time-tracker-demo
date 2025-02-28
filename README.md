@@ -42,7 +42,6 @@ A comprehensive time tracking application built with .NET 9, Blazor, and MudBlaz
 
 4. Access the application in your browser:
    - http://localhost:5000
-   - https://localhost:5001
 
 ## Project Structure
 
